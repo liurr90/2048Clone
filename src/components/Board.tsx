@@ -16,9 +16,29 @@ const BOARD_SIZE = 4;
 const SWIPE_THRESHOLD = 50;
 
 const Board: React.FC = () => {
-  const [board, setBoard] = useState<BoardState>(() => initializeBoard());
-  const [tiles, setTiles] = useState<TileState[]>(() => boardToTiles(initializeBoard()));
-  const [score, setScore] = useState(0);
+  function initializeBoard(): BoardState {
+    const board = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0));
+    return addNewTile(addNewTile(board));
+  }
+
+  function addNewTile(currentBoard: BoardState): BoardState {
+    const newBoard = [...currentBoard.map(row => [...row])];
+    const emptyPositions: Position[] = [];
+
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      for (let j = 0; j < BOARD_SIZE; j++) {
+        if (newBoard[i][j] === 0) {
+          emptyPositions.push({ x: i, y: j });
+        }
+      }
+    }
+
+    if (emptyPositions.length === 0) return newBoard;
+
+    const { x, y } = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+    newBoard[x][y] = Math.random() < 0.9 ? 2 : 4;
+    return newBoard;
+  }
 
   const boardToTiles = useCallback((board: BoardState, previousTiles: TileState[] = []): TileState[] => {
     const newTiles: TileState[] = [];
@@ -57,6 +77,10 @@ const Board: React.FC = () => {
 
     return newTiles;
   }, []);
+
+  const [board, setBoard] = useState<BoardState>(() => initializeBoard());
+  const [tiles, setTiles] = useState<TileState[]>(() => boardToTiles(initializeBoard()));
+  const [score, setScore] = useState(0);
 
   const panResponder = React.useRef(
     PanResponder.create({
@@ -104,30 +128,6 @@ const Board: React.FC = () => {
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
   }, [board, score]);
-
-  function initializeBoard(): BoardState {
-    const board = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0));
-    return addNewTile(addNewTile(board));
-  }
-
-  function addNewTile(currentBoard: BoardState): BoardState {
-    const newBoard = [...currentBoard.map(row => [...row])];
-    const emptyPositions: Position[] = [];
-
-    for (let i = 0; i < BOARD_SIZE; i++) {
-      for (let j = 0; j < BOARD_SIZE; j++) {
-        if (newBoard[i][j] === 0) {
-          emptyPositions.push({ x: i, y: j });
-        }
-      }
-    }
-
-    if (emptyPositions.length === 0) return newBoard;
-
-    const { x, y } = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
-    newBoard[x][y] = Math.random() < 0.9 ? 2 : 4;
-    return newBoard;
-  }
 
   function handleSwipe(gestureState: PanResponderGestureState) {
     const { dx, dy } = gestureState;
