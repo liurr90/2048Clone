@@ -1,16 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, PanResponder, PanResponderGestureState, Platform } from 'react-native';
 import Tile from './Tile';
 
 type BoardState = number[][];
 type Position = { x: number; y: number };
+type TileState = {
+  id: string;
+  value: number;
+  position: Position;
+  previousPosition: Position | null;
+  isNew: boolean;
+};
 
 const BOARD_SIZE = 4;
 const SWIPE_THRESHOLD = 50;
 
 const Board: React.FC = () => {
   const [board, setBoard] = useState<BoardState>(() => initializeBoard());
+  const [tiles, setTiles] = useState<TileState[]>(() => boardToTiles(initializeBoard()));
   const [score, setScore] = useState(0);
+
+  const boardToTiles = useCallback((board: BoardState, previousTiles: TileState[] = []): TileState[] => {
+    const newTiles: TileState[] = [];
+    const usedIds = new Set<string>();
+
+    // First, try to reuse existing tiles
+    board.forEach((row, i) => {
+      row.forEach((value, j) => {
+        if (value !== 0) {
+          // Try to find a matching tile from previous state
+          const existingTile = previousTiles.find(
+            t => t.value === value && !usedIds.has(t.id)
+          );
+
+          if (existingTile) {
+            usedIds.add(existingTile.id);
+            newTiles.push({
+              ...existingTile,
+              position: { x: j, y: i },
+              previousPosition: existingTile.position,
+              isNew: false,
+            });
+          } else {
+            // Create a new tile
+            newTiles.push({
+              id: `${i}-${j}-${Date.now()}-${Math.random()}`,
+              value,
+              position: { x: j, y: i },
+              previousPosition: null,
+              isNew: true,
+            });
+          }
+        }
+      });
+    });
+
+    return newTiles;
+  }, []);
 
   const panResponder = React.useRef(
     PanResponder.create({
@@ -47,7 +93,9 @@ const Board: React.FC = () => {
         event.preventDefault();
         const [newBoard, newScore] = moveBoard(board, direction);
         if (JSON.stringify(newBoard) !== JSON.stringify(board)) {
-          setBoard(addNewTile(newBoard));
+          const boardWithNewTile = addNewTile(newBoard);
+          setBoard(boardWithNewTile);
+          setTiles(prevTiles => boardToTiles(boardWithNewTile, prevTiles));
           setScore(score + newScore);
         }
       }
@@ -97,7 +145,9 @@ const Board: React.FC = () => {
 
     const [newBoard, newScore] = moveBoard(board, direction);
     if (JSON.stringify(newBoard) !== JSON.stringify(board)) {
-      setBoard(addNewTile(newBoard));
+      const boardWithNewTile = addNewTile(newBoard);
+      setBoard(boardWithNewTile);
+      setTiles(prevTiles => boardToTiles(boardWithNewTile, prevTiles));
       setScore(score + newScore);
     }
   }
@@ -180,15 +230,15 @@ const Board: React.FC = () => {
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
       <View style={styles.board}>
-        {board.map((row, i) =>
-          row.map((value, j) => (
-            <Tile
-              key={`${i}-${j}`}
-              value={value}
-              position={{ x: j, y: i }}
-            />
-          ))
-        )}
+        {tiles.map(tile => (
+          <Tile
+            key={tile.id}
+            value={tile.value}
+            position={tile.position}
+            previousPosition={tile.previousPosition}
+            isNew={tile.isNew}
+          />
+        ))}
       </View>
     </View>
   );

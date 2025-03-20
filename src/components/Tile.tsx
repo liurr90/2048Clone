@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { StyleSheet, Text, Animated } from 'react-native';
 
 interface TileProps {
   value: number;
   position: { x: number; y: number };
+  previousPosition?: { x: number; y: number } | null;
+  isNew?: boolean;
 }
 
 const getBackgroundColor = (value: number): string => {
@@ -29,17 +31,40 @@ const getFontSize = (value: number): number => {
   return 32;
 };
 
-const Tile: React.FC<TileProps> = ({ value, position }) => {
-  const animatedValue = new Animated.Value(value === 0 ? 0 : 1);
+const Tile: React.FC<TileProps> = ({ value, position, previousPosition, isNew = false }) => {
+  const scale = useRef(new Animated.Value(isNew ? 0 : 1)).current;
+  const left = useRef(new Animated.Value(
+    previousPosition ? previousPosition.x * 80 : position.x * 80
+  )).current;
+  const top = useRef(new Animated.Value(
+    previousPosition ? previousPosition.y * 80 : position.y * 80
+  )).current;
 
-  React.useEffect(() => {
-    Animated.spring(animatedValue, {
-      toValue: value === 0 ? 0 : 1,
-      friction: 5,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
-  }, [value]);
+  useEffect(() => {
+    if (isNew) {
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 5,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+    }
+
+    Animated.parallel([
+      Animated.spring(left, {
+        toValue: position.x * 80,
+        friction: 6,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(top, {
+        toValue: position.y * 80,
+        friction: 6,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [position, isNew]);
 
   if (value === 0) return null;
 
@@ -50,15 +75,10 @@ const Tile: React.FC<TileProps> = ({ value, position }) => {
         {
           backgroundColor: getBackgroundColor(value),
           transform: [
-            {
-              scale: animatedValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.3, 1],
-              }),
-            },
+            { translateX: left },
+            { translateY: top },
+            { scale },
           ],
-          left: position.x * 80,
-          top: position.y * 80,
         },
       ]}
     >
@@ -93,4 +113,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Tile; 
+export default React.memo(Tile); 
