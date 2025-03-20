@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, PanResponder, PanResponderGestureState } from 'react-native';
+import { StyleSheet, View, PanResponder, PanResponderGestureState, Platform } from 'react-native';
 import Tile from './Tile';
 
 type BoardState = number[][];
@@ -19,6 +19,43 @@ const Board: React.FC = () => {
       onPanResponderRelease: (_, gestureState) => handleSwipe(gestureState),
     })
   ).current;
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handleKeyPress = (event: any) => {
+      let direction: 'left' | 'right' | 'up' | 'down' | null = null;
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          direction = 'left';
+          break;
+        case 'ArrowRight':
+          direction = 'right';
+          break;
+        case 'ArrowUp':
+          direction = 'up';
+          break;
+        case 'ArrowDown':
+          direction = 'down';
+          break;
+        default:
+          return;
+      }
+
+      if (direction) {
+        event.preventDefault();
+        const [newBoard, newScore] = moveBoard(board, direction);
+        if (JSON.stringify(newBoard) !== JSON.stringify(board)) {
+          setBoard(addNewTile(newBoard));
+          setScore(score + newScore);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [board, score]);
 
   function initializeBoard(): BoardState {
     const board = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0));
