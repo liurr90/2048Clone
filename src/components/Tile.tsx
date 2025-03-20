@@ -1,11 +1,10 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, Text, Animated } from 'react-native';
 
 interface TileProps {
   value: number;
   position: { x: number; y: number };
-  previousPosition?: { x: number; y: number } | null;
-  isNew?: boolean;
+  isNew: boolean;
 }
 
 const getBackgroundColor = (value: number): string => {
@@ -31,40 +30,42 @@ const getFontSize = (value: number): number => {
   return 32;
 };
 
-const Tile: React.FC<TileProps> = ({ value, position, previousPosition, isNew = false }) => {
-  const scale = useRef(new Animated.Value(isNew ? 0 : 1)).current;
-  const left = useRef(new Animated.Value(
-    previousPosition ? previousPosition.x * 80 : position.x * 80
-  )).current;
-  const top = useRef(new Animated.Value(
-    previousPosition ? previousPosition.y * 80 : position.y * 80
-  )).current;
+const Tile: React.FC<TileProps> = ({ value, position, isNew }) => {
+  const [prevPosition, setPrevPosition] = React.useState(position);
+  const animatedValue = React.useRef(new Animated.Value(value === 0 ? 0 : 1)).current;
+  const animatedPosition = React.useRef(new Animated.ValueXY({ 
+    x: position.x * 80, 
+    y: position.y * 80 
+  })).current;
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isNew) {
-      Animated.spring(scale, {
-        toValue: 1,
+      // For new tiles, just set the position without animation
+      animatedPosition.setValue({ 
+        x: position.x * 80, 
+        y: position.y * 80 
+      });
+      // Animate the scale from 0 to 1
+      Animated.spring(animatedValue, {
+        toValue: value === 0 ? 0 : 1,
         friction: 5,
         tension: 40,
         useNativeDriver: true,
       }).start();
+    } else {
+      // For existing tiles, animate the position
+      Animated.spring(animatedPosition, {
+        toValue: { 
+          x: position.x * 80, 
+          y: position.y * 80 
+        },
+        friction: 6,
+        tension: 50,
+        useNativeDriver: true,
+      }).start();
     }
-
-    Animated.parallel([
-      Animated.spring(left, {
-        toValue: position.x * 80,
-        friction: 6,
-        tension: 50,
-        useNativeDriver: true,
-      }),
-      Animated.spring(top, {
-        toValue: position.y * 80,
-        friction: 6,
-        tension: 50,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [position, isNew]);
+    setPrevPosition(position);
+  }, [position, value, isNew]);
 
   if (value === 0) return null;
 
@@ -75,9 +76,15 @@ const Tile: React.FC<TileProps> = ({ value, position, previousPosition, isNew = 
         {
           backgroundColor: getBackgroundColor(value),
           transform: [
-            { translateX: left },
-            { translateY: top },
-            { scale },
+            {
+              translateX: animatedPosition.x,
+            },
+            {
+              translateY: animatedPosition.y,
+            },
+            {
+              scale: animatedValue,
+            },
           ],
         },
       ]}
@@ -113,4 +120,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(Tile); 
+export default Tile; 
