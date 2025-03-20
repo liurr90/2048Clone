@@ -95,16 +95,16 @@ export class GameManager {
     } else if (direction === 'up') {
       const rotated = this.rotateBoard(newBoard);
       for (let i = 0; i < this.size; i++) {
-        const [newRow, score] = moveLeft(rotated[i]);
-        rotated[i] = newRow;
+        const [newRow, score] = moveLeft(rotated[i].reverse());
+        rotated[i] = newRow.reverse();
         newScore += score;
       }
       newBoard = this.rotateBoard(rotated, true);
     } else {
       const rotated = this.rotateBoard(newBoard);
       for (let i = 0; i < this.size; i++) {
-        const [newRow, score] = moveLeft(rotated[i].reverse());
-        rotated[i] = newRow.reverse();
+        const [newRow, score] = moveLeft(rotated[i]);
+        rotated[i] = newRow;
         newScore += score;
       }
       newBoard = this.rotateBoard(rotated, true);
