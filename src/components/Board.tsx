@@ -143,16 +143,16 @@ const Board: React.FC = () => {
     } else if (direction === 'up') {
       const rotated = rotateBoard(newBoard);
       for (let i = 0; i < BOARD_SIZE; i++) {
-        const [newRow, score] = moveLeft(rotated[i]);
-        rotated[i] = newRow;
+        const [newRow, score] = moveLeft(rotated[i].reverse());
+        rotated[i] = newRow.reverse();
         newScore += score;
       }
       newBoard = rotateBoard(rotated, true);
     } else {
       const rotated = rotateBoard(newBoard);
       for (let i = 0; i < BOARD_SIZE; i++) {
-        const [newRow, score] = moveLeft(rotated[i].reverse());
-        rotated[i] = newRow.reverse();
+        const [newRow, score] = moveLeft(rotated[i]);
+        rotated[i] = newRow;
         newScore += score;
       }
       newBoard = rotateBoard(rotated, true);
