@@ -1,9 +1,14 @@
 export type BoardState = number[][];
 export type Position = { x: number; y: number };
 export type Direction = 'left' | 'right' | 'up' | 'down';
+export type TileData = {
+  value: number;
+  isNew: boolean;
+};
+export type BoardWithMetadata = TileData[][];
 
 export class GameManager {
-  private board: BoardState;
+  private board: BoardWithMetadata;
   private score: number;
   private readonly size: number;
 
@@ -13,7 +18,7 @@ export class GameManager {
     this.board = this.initializeBoard();
   }
 
-  getBoard(): BoardState {
+  getBoard(): BoardWithMetadata {
     return this.board;
   }
 
@@ -21,18 +26,20 @@ export class GameManager {
     return this.score;
   }
 
-  private initializeBoard(): BoardState {
-    const board = Array(this.size).fill(0).map(() => Array(this.size).fill(0));
+  private initializeBoard(): BoardWithMetadata {
+    const board = Array(this.size).fill(0).map(() => 
+      Array(this.size).fill(null).map(() => ({ value: 0, isNew: false }))
+    );
     return this.addNewTile(this.addNewTile(board));
   }
 
-  private addNewTile(currentBoard: BoardState): BoardState {
-    const newBoard = [...currentBoard.map(row => [...row])];
+  private addNewTile(currentBoard: BoardWithMetadata): BoardWithMetadata {
+    const newBoard = [...currentBoard.map(row => [...row.map(tile => ({ ...tile, isNew: false }))])];
     const emptyPositions: Position[] = [];
 
     for (let i = 0; i < this.size; i++) {
       for (let j = 0; j < this.size; j++) {
-        if (newBoard[i][j] === 0) {
+        if (newBoard[i][j].value === 0) {
           emptyPositions.push({ x: i, y: j });
         }
       }
@@ -41,13 +48,16 @@ export class GameManager {
     if (emptyPositions.length === 0) return newBoard;
 
     const { x, y } = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
-    newBoard[x][y] = Math.random() < 0.9 ? 2 : 4;
+    newBoard[x][y] = {
+      value: Math.random() < 0.9 ? 2 : 4,
+      isNew: true
+    };
     return newBoard;
   }
 
   move(direction: Direction): boolean {
     const [newBoard, newScore] = this.moveBoard(this.board, direction);
-    const hasChanged = JSON.stringify(newBoard) !== JSON.stringify(this.board);
+    const hasChanged = JSON.stringify(this.getBoardValues(newBoard)) !== JSON.stringify(this.getBoardValues(this.board));
     
     if (hasChanged) {
       this.board = this.addNewTile(newBoard);
@@ -57,24 +67,28 @@ export class GameManager {
     return hasChanged;
   }
 
-  private moveBoard(currentBoard: BoardState, direction: Direction): [BoardState, number] {
-    let newBoard = [...currentBoard.map(row => [...row])];
+  private getBoardValues(board: BoardWithMetadata): number[][] {
+    return board.map(row => row.map(tile => tile.value));
+  }
+
+  private moveBoard(currentBoard: BoardWithMetadata, direction: Direction): [BoardWithMetadata, number] {
+    let newBoard = [...currentBoard.map(row => [...row.map(tile => ({ ...tile, isNew: false }))])];
     let newScore = 0;
 
-    const moveLeft = (row: number[]): [number[], number] => {
-      const newRow = row.filter(cell => cell !== 0);
+    const moveLeft = (row: TileData[]): [TileData[], number] => {
+      const newRow = row.filter(tile => tile.value !== 0);
       let score = 0;
       
       for (let i = 0; i < newRow.length - 1; i++) {
-        if (newRow[i] === newRow[i + 1]) {
-          newRow[i] *= 2;
-          score += newRow[i];
+        if (newRow[i].value === newRow[i + 1].value) {
+          newRow[i] = { value: newRow[i].value * 2, isNew: false };
+          score += newRow[i].value;
           newRow.splice(i + 1, 1);
         }
       }
       
       while (newRow.length < this.size) {
-        newRow.push(0);
+        newRow.push({ value: 0, isNew: false });
       }
       
       return [newRow, score];
@@ -113,15 +127,17 @@ export class GameManager {
     return [newBoard, newScore];
   }
 
-  private rotateBoard(board: BoardState, counterClockwise = false): BoardState {
-    const rotated = Array(this.size).fill(0).map(() => Array(this.size).fill(0));
+  private rotateBoard(board: BoardWithMetadata, counterClockwise = false): BoardWithMetadata {
+    const rotated = Array(this.size).fill(0).map(() => 
+      Array(this.size).fill(null).map(() => ({ value: 0, isNew: false }))
+    );
     
     for (let i = 0; i < this.size; i++) {
       for (let j = 0; j < this.size; j++) {
         if (counterClockwise) {
-          rotated[this.size - 1 - j][i] = board[i][j];
+          rotated[this.size - 1 - j][i] = { ...board[i][j] };
         } else {
-          rotated[j][this.size - 1 - i] = board[i][j];
+          rotated[j][this.size - 1 - i] = { ...board[i][j] };
         }
       }
     }

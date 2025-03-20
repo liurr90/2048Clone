@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, PanResponder, PanResponderGestureState, Platform } from 'react-native';
 import Tile from './Tile';
-import { GameManager, Direction } from '../game/GameManager';
+import { GameManager, Direction, BoardWithMetadata } from '../game/GameManager';
 
 const SWIPE_THRESHOLD = 50;
 
 const Board: React.FC = () => {
   const gameManager = useRef(new GameManager(4)).current;
-  const [board, setBoard] = useState(() => gameManager.getBoard());
+  const [board, setBoard] = useState<BoardWithMetadata>(() => gameManager.getBoard());
   const [score, setScore] = useState(0);
 
   const updateGameState = () => {
@@ -82,10 +82,11 @@ const Board: React.FC = () => {
     <View style={styles.container} {...panResponder.panHandlers}>
       <View style={styles.board}>
         {board.map((row, i) =>
-          row.map((value, j) => (
+          row.map((tile, j) => (
             <Tile
               key={`${i}-${j}`}
-              value={value}
+              value={tile.value}
+              isNew={tile.isNew}
               position={{ x: j, y: i }}
             />
           ))

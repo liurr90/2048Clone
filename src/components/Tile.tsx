@@ -1,12 +1,41 @@
 import React from 'react';
-import { StyleSheet, Text, Animated } from 'react-native';
+import { StyleSheet, Text, View, Dimensions } from 'react-native';
+import { Position } from '../game/GameManager';
 
 interface TileProps {
   value: number;
-  position: { x: number; y: number };
+  position: Position;
+  isNew: boolean;
 }
 
-const getBackgroundColor = (value: number): string => {
+const TILE_SIZE = Math.min(76, (Dimensions.get('window').width - 40) / 4);
+const TILE_MARGIN = Math.min(8, TILE_SIZE * 0.1);
+
+const Tile: React.FC<TileProps> = ({ value, position, isNew }) => {
+  if (value === 0) return null;
+
+  const tileStyle = {
+    ...styles.tile,
+    backgroundColor: getTileColor(value),
+    left: position.x * (TILE_SIZE + TILE_MARGIN * 2) + TILE_MARGIN,
+    top: position.y * (TILE_SIZE + TILE_MARGIN * 2) + TILE_MARGIN,
+  };
+
+  const textStyle = {
+    ...styles.text,
+    color: value <= 4 ? '#776e65' : '#f9f6f2',
+    fontSize: value > 100 ? 24 : 32,
+    fontWeight: isNew ? ('bold' as const) : ('normal' as const),
+  };
+
+  return (
+    <View style={tileStyle}>
+      <Text style={textStyle}>{value}</Text>
+    </View>
+  );
+};
+
+const getTileColor = (value: number): string => {
   const colors: { [key: number]: string } = {
     2: '#eee4da',
     4: '#ede0c8',
@@ -23,73 +52,18 @@ const getBackgroundColor = (value: number): string => {
   return colors[value] || '#cdc1b4';
 };
 
-const getFontSize = (value: number): number => {
-  if (value >= 1024) return 24;
-  if (value >= 100) return 28;
-  return 32;
-};
-
-const Tile: React.FC<TileProps> = ({ value, position }) => {
-  const animatedValue = new Animated.Value(value === 0 ? 0 : 1);
-
-  React.useEffect(() => {
-    Animated.spring(animatedValue, {
-      toValue: value === 0 ? 0 : 1,
-      friction: 5,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
-  }, [value]);
-
-  if (value === 0) return null;
-
-  return (
-    <Animated.View
-      style={[
-        styles.tile,
-        {
-          backgroundColor: getBackgroundColor(value),
-          transform: [
-            {
-              scale: animatedValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.3, 1],
-              }),
-            },
-          ],
-          left: position.x * 80,
-          top: position.y * 80,
-        },
-      ]}
-    >
-      <Text
-        style={[
-          styles.tileText,
-          {
-            fontSize: getFontSize(value),
-            color: value <= 4 ? '#776e65' : '#f9f6f2',
-          },
-        ]}
-      >
-        {value}
-      </Text>
-    </Animated.View>
-  );
-};
-
 const styles = StyleSheet.create({
   tile: {
     position: 'absolute',
-    width: 72,
-    height: 72,
-    borderRadius: 8,
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 4,
   },
-  tileText: {
+  text: {
     fontSize: 32,
-    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
