@@ -4,7 +4,6 @@ import { StyleSheet, Text, Animated } from 'react-native';
 interface TileProps {
   value: number;
   position: { x: number; y: number };
-  isNew: boolean;
 }
 
 const getBackgroundColor = (value: number): string => {
@@ -30,42 +29,17 @@ const getFontSize = (value: number): number => {
   return 32;
 };
 
-const Tile: React.FC<TileProps> = ({ value, position, isNew }) => {
-  const [prevPosition, setPrevPosition] = React.useState(position);
-  const animatedValue = React.useRef(new Animated.Value(value === 0 ? 0 : 1)).current;
-  const animatedPosition = React.useRef(new Animated.ValueXY({ 
-    x: position.x * 80, 
-    y: position.y * 80 
-  })).current;
+const Tile: React.FC<TileProps> = ({ value, position }) => {
+  const animatedValue = new Animated.Value(value === 0 ? 0 : 1);
 
   React.useEffect(() => {
-    if (isNew) {
-      // For new tiles, just set the position without animation
-      animatedPosition.setValue({ 
-        x: position.x * 80, 
-        y: position.y * 80 
-      });
-      // Animate the scale from 0 to 1
-      Animated.spring(animatedValue, {
-        toValue: value === 0 ? 0 : 1,
-        friction: 5,
-        tension: 40,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      // For existing tiles, animate the position
-      Animated.spring(animatedPosition, {
-        toValue: { 
-          x: position.x * 80, 
-          y: position.y * 80 
-        },
-        friction: 6,
-        tension: 50,
-        useNativeDriver: true,
-      }).start();
-    }
-    setPrevPosition(position);
-  }, [position, value, isNew]);
+    Animated.spring(animatedValue, {
+      toValue: value === 0 ? 0 : 1,
+      friction: 5,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [value]);
 
   if (value === 0) return null;
 
@@ -77,15 +51,14 @@ const Tile: React.FC<TileProps> = ({ value, position, isNew }) => {
           backgroundColor: getBackgroundColor(value),
           transform: [
             {
-              translateX: animatedPosition.x,
-            },
-            {
-              translateY: animatedPosition.y,
-            },
-            {
-              scale: animatedValue,
+              scale: animatedValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.3, 1],
+              }),
             },
           ],
+          left: position.x * 80,
+          top: position.y * 80,
         },
       ]}
     >

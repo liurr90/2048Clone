@@ -1,27 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, PanResponder, PanResponderGestureState, Platform } from 'react-native';
 import Tile from './Tile';
+import { GameManager, Direction } from '../game/GameManager';
 
-type BoardState = number[][];
-type Position = { x: number; y: number };
-type TileState = {
-  value: number;
-  isNew: boolean;
-};
-type BoardTileState = TileState[][];
-
-const BOARD_SIZE = 4;
 const SWIPE_THRESHOLD = 50;
 
 const Board: React.FC = () => {
-  const [board, setBoard] = useState<BoardTileState>(() => initializeBoard());
+  const gameManager = useRef(new GameManager(4)).current;
+  const [board, setBoard] = useState(() => gameManager.getBoard());
   const [score, setScore] = useState(0);
+
+  const updateGameState = () => {
+    setBoard(gameManager.getBoard());
+    setScore(gameManager.getScore());
+  };
+
+  const handleMove = (direction: Direction) => {
+    const moved = gameManager.move(direction);
+    if (moved) {
+      updateGameState();
+    }
+  };
 
   const panResponder = React.useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderRelease: (_, gestureState) => handleSwipe(gestureState),
+      onPanResponderRelease: (_, gestureState) => {
+        const { dx, dy } = gestureState;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+
+        if (Math.max(absDx, absDy) < SWIPE_THRESHOLD) return;
+
+        let direction: Direction;
+        if (absDx > absDy) {
+          direction = dx > 0 ? 'right' : 'left';
+        } else {
+          direction = dy > 0 ? 'down' : 'up';
+        }
+
+        handleMove(direction);
+      },
     })
   ).current;
 
@@ -29,7 +49,7 @@ const Board: React.FC = () => {
     if (Platform.OS !== 'web') return;
 
     const handleKeyPress = (event: any) => {
-      let direction: 'left' | 'right' | 'up' | 'down' | null = null;
+      let direction: Direction | null = null;
       
       switch (event.key) {
         case 'ArrowLeft':
@@ -50,150 +70,23 @@ const Board: React.FC = () => {
 
       if (direction) {
         event.preventDefault();
-        const [newBoard, newScore] = moveBoard(board.map(row => row.map(tile => tile.value)), direction);
-        if (JSON.stringify(newBoard) !== JSON.stringify(board.map(row => row.map(tile => tile.value)))) {
-          setBoard(addNewTile(newBoard.map(row => row.map(value => ({ value, isNew: false })))));
-          setScore(score + newScore);
-        }
+        handleMove(direction);
       }
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [board, score]);
-
-  function initializeBoard(): BoardTileState {
-    const emptyBoard = Array(BOARD_SIZE).fill(0).map(() => 
-      Array(BOARD_SIZE).fill(0).map(() => ({ value: 0, isNew: false }))
-    );
-    return addNewTile(addNewTile(emptyBoard));
-  }
-
-  function addNewTile(currentBoard: BoardTileState): BoardTileState {
-    const newBoard = [...currentBoard.map(row => [...row.map(tile => ({ ...tile }))])];
-    const emptyPositions: Position[] = [];
-
-    for (let i = 0; i < BOARD_SIZE; i++) {
-      for (let j = 0; j < BOARD_SIZE; j++) {
-        if (newBoard[i][j].value === 0) {
-          emptyPositions.push({ x: i, y: j });
-        }
-      }
-    }
-
-    if (emptyPositions.length === 0) return newBoard;
-
-    const { x, y } = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
-    newBoard[x][y] = { value: Math.random() < 0.9 ? 2 : 4, isNew: true };
-    return newBoard;
-  }
-
-  function handleSwipe(gestureState: PanResponderGestureState) {
-    const { dx, dy } = gestureState;
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-
-    if (Math.max(absDx, absDy) < SWIPE_THRESHOLD) return;
-
-    let direction: 'left' | 'right' | 'up' | 'down';
-    if (absDx > absDy) {
-      direction = dx > 0 ? 'right' : 'left';
-    } else {
-      direction = dy > 0 ? 'down' : 'up';
-    }
-
-    const [newBoard, newScore] = moveBoard(board.map(row => row.map(tile => tile.value)), direction);
-    if (JSON.stringify(newBoard) !== JSON.stringify(board.map(row => row.map(tile => tile.value)))) {
-      setBoard(addNewTile(newBoard.map(row => row.map(value => ({ value, isNew: false })))));
-      setScore(score + newScore);
-    }
-  }
-
-  function moveBoard(
-    currentBoard: number[][],
-    direction: 'left' | 'right' | 'up' | 'down'
-  ): [number[][], number] {
-    let newBoard = [...currentBoard.map(row => [...row])];
-    let newScore = 0;
-
-    const moveLeft = (row: number[]): [number[], number] => {
-      const newRow = row.filter(cell => cell !== 0);
-      let score = 0;
-      
-      for (let i = 0; i < newRow.length - 1; i++) {
-        if (newRow[i] === newRow[i + 1]) {
-          newRow[i] *= 2;
-          score += newRow[i];
-          newRow.splice(i + 1, 1);
-        }
-      }
-      
-      while (newRow.length < BOARD_SIZE) {
-        newRow.push(0);
-      }
-      
-      return [newRow, score];
-    };
-
-    if (direction === 'left') {
-      for (let i = 0; i < BOARD_SIZE; i++) {
-        const [newRow, score] = moveLeft(newBoard[i]);
-        newBoard[i] = newRow;
-        newScore += score;
-      }
-    } else if (direction === 'right') {
-      for (let i = 0; i < BOARD_SIZE; i++) {
-        const [newRow, score] = moveLeft(newBoard[i].reverse());
-        newBoard[i] = newRow.reverse();
-        newScore += score;
-      }
-    } else if (direction === 'up') {
-      const rotated = rotateBoard(newBoard);
-      for (let i = 0; i < BOARD_SIZE; i++) {
-        const [newRow, score] = moveLeft(rotated[i].reverse());
-        rotated[i] = newRow.reverse();
-        newScore += score;
-      }
-      newBoard = rotateBoard(rotated, true);
-    } else {
-      const rotated = rotateBoard(newBoard);
-      for (let i = 0; i < BOARD_SIZE; i++) {
-        const [newRow, score] = moveLeft(rotated[i]);
-        rotated[i] = newRow;
-        newScore += score;
-      }
-      newBoard = rotateBoard(rotated, true);
-    }
-
-    return [newBoard, newScore];
-  }
-
-  function rotateBoard(board: number[][], counterClockwise = false): number[][] {
-    const rotated = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0));
-    
-    for (let i = 0; i < BOARD_SIZE; i++) {
-      for (let j = 0; j < BOARD_SIZE; j++) {
-        if (counterClockwise) {
-          rotated[BOARD_SIZE - 1 - j][i] = board[i][j];
-        } else {
-          rotated[j][BOARD_SIZE - 1 - i] = board[i][j];
-        }
-      }
-    }
-    
-    return rotated;
-  }
+  }, []);
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
       <View style={styles.board}>
         {board.map((row, i) =>
-          row.map((tile, j) => (
+          row.map((value, j) => (
             <Tile
               key={`${i}-${j}`}
-              value={tile.value}
+              value={value}
               position={{ x: j, y: i }}
-              isNew={tile.isNew}
             />
           ))
         )}
