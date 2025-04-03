@@ -69,7 +69,6 @@ export class GameManager {
     if (emptyPositions.length === 0) return newBoard;
 
     const { x, y } = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
-    // Create a new tile with value 2 (90% chance) or 4 (10% chance)
     newBoard[x][y] = Math.random() < 0.9 ? 2 : 4;
     return newBoard;
   }
